@@ -165,7 +165,11 @@ namespace MajdataViewX.Managers
                 }
                 else
                 {
-                    gameObject.transform.localScale = new Vector3(CIRCLED_SCALE_X, CIRCLED_SCALE_X * scale);
+                    var circleDiameter = circledBgMaterial.GetFloat("_Radius") * 2f;
+                    var spriteSize = spriteRender.sprite.bounds.size;
+                    var longestSide = Mathf.Max(spriteSize.x, spriteSize.y * scale);
+                    var fitScale = circleDiameter / longestSide;
+                    gameObject.transform.localScale = new Vector3(fitScale, fitScale * scale, fitScale);
                     spriteRender.material = circledBgMaterial;
                 }
             }
