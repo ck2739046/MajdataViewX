@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 
@@ -13,12 +12,6 @@ namespace MajdataViewX.Managers
         private void Start()
         {
             DDResolution.gameObject.SetActive(false);
-        }
-
-        private void Update()
-        {
-            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-                ToggleFullscreen();
         }
 
         public void ToggleFullscreen()

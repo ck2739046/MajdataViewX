@@ -1588,12 +1588,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a662dbfa4b372a84d8f02effc047e9c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  NoteSpeed: 7
-  TouchSpeed: 7.5
-  LegacySlideLayer: 0
-  SmoothSlideAnime: 1
-  MineAutoSlide: 1
-  Ignore: 0
   DJAutoMoveCurve:
     serializedVersion: 2
     m_Curve:
@@ -2294,7 +2288,6 @@ MonoBehaviour:
   - {r: 0.73333335, g: 0.43921572, b: 1, a: 1}
   - {r: 0.94856584, g: 0.7028302, b: 1, a: 1}
   - {r: 1, g: 0.6608349, b: 0.3443396, a: 1}
-  errText: {fileID: 753237956}
 --- !u!4 &410561410
 Transform:
   m_ObjectHideFlags: 0
@@ -2690,7 +2683,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &483431725
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3161,7 +3154,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &569942661
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3987,6 +3980,7 @@ MonoBehaviour:
   defaultBg: {fileID: 21300000, guid: e76da1c30dfa99d4f88a60d737457499, type: 3}
   fullscreenBgMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
   circledBgMaterial: {fileID: 2100000, guid: 58b71fdfceaec5b4c9eed8d4fa6fc443, type: 2}
+  ResizeBg: 0
 --- !u!212 &655536541
 SpriteRenderer:
   serializedVersion: 2
@@ -9029,6 +9023,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64f257b00a9ed6044bc97eda2c6b294f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  offset: 0
 --- !u!1 &1639636699
 GameObject:
   m_ObjectHideFlags: 0
@@ -10606,7 +10601,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2015046460
 RectTransform:
   m_ObjectHideFlags: 0
