@@ -230,7 +230,7 @@ namespace MajdataViewX.Notes.NoteDatas
             eaten = default;
 
             process = default;
-            processIdx = default;
+            processIdx = 1;
             starScale = default;
             judgeCurrent = default;
             judgeL_Current = default;

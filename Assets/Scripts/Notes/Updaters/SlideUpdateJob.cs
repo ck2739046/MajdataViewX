@@ -58,32 +58,28 @@ namespace MajdataViewX.Notes.Updaters
             if (slide.isFolded) return;
             if (TimeData.NoteTime < slide.tapTime ||
                 TimeData.NoteTime > slide.shootTime + slide.LastFor) return;
-            var timeVal = ((uint)math.max(0f, slide.tapTime * 100f)) & 0x7FFFF;
-            var timePart = NoteHelper.Settings.LegacySlideLayer ? (0x7FFFFu - timeVal) : timeVal;
 
-            var cnt = slide.slideArrowsCount;
-            var startIdx = 1;
-            var endIdx = slide.noLastArrow ? cnt - 2 : cnt - 1;
-            var writeCount = math.max(0, endIdx - startIdx);
+            var tapTiming = TimeData.NoteTime - slide.tapTime;
+            var timing = TimeData.NoteTime - slide.shootTime;
+            slide.process = math.saturate(timing / math.max(slide.LastFor, 0.001f));
 
-            if (writeCount <= 0) return;
-
-            var idx = Interlocked.Add(ref *SlidesWriteCountPtr, writeCount) - writeCount;
-            for (var i = startIdx; i < endIdx; i++)
+            // 播放期 processIdx 只增不减，暂停查看需按当前时间重建
+            if (!slide.isWifi)
             {
-                var p = slide.slideArrows[i];
-
-                slidesRender[idx + i - startIdx] = new SimpleRenderData
-                {
-                    pos = new float2(p.X, p.Y),
-                    angRad = math.radians(p.RotZ),
-                    scale = new float2(1, 1),
-                    spriteId = slide.isWifi ? slide.slideSprite.Offset(i - 1) : slide.slideSprite,
-                    color = 1f,
-                    brightness = 1f,
-                    sort = (timePart << 13) | ((uint)(index & 0x1F) << 8) | ((uint)i & 0xFF),
-                };
+                var idxLast = slide.slideArrowsCount - 1;
+                var distance = slide.process * slide.slideArrows[idxLast].L;
+                slide.processIdx = 1;
+                while (slide.slideArrows[slide.processIdx].L < distance && slide.processIdx < idxLast)
+                    slide.processIdx++;
             }
+            else
+            {
+                slide.processIdx = math.max((int)(slide.process * (slide.slideArrowsCount - 1)), 1);
+            }
+
+            slide.brightness = 1f;
+            RenderArrows(ref slide, index, tapTiming, slide.processIdx - 1);
+            RenderStar(ref slide, index, timing, tapTiming);
         }
         // 注意：RenderXXX都是需要每帧调用的
         private void TransformUpdate(ref SlideData slide, int index)
@@ -124,11 +120,11 @@ namespace MajdataViewX.Notes.Updaters
             // 这里只裁剪尚未判定的渲染，不能阻断 SlideOK 和判定上报的生命周期。
             if (tapTiming - slide.fadeInStartTiming < 0) return;
 
-            RenderArrows(ref slide, index, tapTiming);
+            RenderArrows(ref slide, index, tapTiming, slide.eaten);
             RenderStar(ref slide, index, timing, tapTiming);
         }
 
-        private void RenderArrows(ref SlideData slide, int index, float tapTiming)
+        private void RenderArrows(ref SlideData slide, int index, float tapTiming, int eaten)
         {
             if (slide.isFolded) return;
 
@@ -159,7 +155,7 @@ namespace MajdataViewX.Notes.Updaters
             var sortTime = ((timePart << 11) | (uint)(index & 0x7FF)) & 0x3FFFFFFF;
 
             // 第一个是路径起点，最后一个是路径终点，忽略不画，倒数第二个要看情况
-            var startIdx = slide.eaten + 1;
+            var startIdx = eaten + 1;
             var endIdx = slide.noLastArrow ? cnt - 2 : cnt - 1;
             var writeCount = math.max(0, endIdx - startIdx);
 

@@ -1029,7 +1029,7 @@ namespace MajdataViewX.Managers
             for (int i = 0; i < slides.Length; i++)
             {
                 ref var slide = ref slides.ElementRef(i);
-                if (slide.tapTime < ignore) slide.isEnd = true;
+                if (slide.shootTime + slide.LastFor < ignore) slide.isEnd = true;
                 else slide.Reset();
             }
             for (int i = 0; i < touches.Length; i++)
