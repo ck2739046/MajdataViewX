@@ -186,7 +186,7 @@ namespace MajdataViewX.Managers
             _bgManager.ResizeBg = _setting.ResizeBg;
         }
 
-        public async UniTask UpdateAsync(long fileLength, long chartLength, int selectedDiff)
+        public async UniTask UpdateAsync(long fileLength, long chartLength, int selectedDiff, float pvOffset)
         {
             while (_state is ViewStatus.Busy)
                 await UniTask.Yield();
@@ -208,6 +208,7 @@ namespace MajdataViewX.Managers
             _chart = chart;
 
             _timeProvider.offset = _file.Offset;
+            _bgManager.PvOffset = pvOffset;
             //answer
             var clockCount = 0;
             var clockCommand = file.Commands.FirstOrDefault(c => c.Prefix == "clock_count");

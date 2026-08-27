@@ -34,6 +34,8 @@ namespace MajdataViewX.Managers
 
         private float smoothRDelta;
 
+        public float PvOffset { get; set; }
+
         private const float CIRCLED_SCALE_X = 1.1f;
         private const float FULLSCREEN_SCALE_X = 1.777f;
 
@@ -47,6 +49,7 @@ namespace MajdataViewX.Managers
 
         private static Sprite? _emptySprite;
         bool _videoPaused;
+        bool _videoWaitingForOffset;
 
         private void Awake()
         {
@@ -70,12 +73,30 @@ namespace MajdataViewX.Managers
         {
             if (hasVideo && _videoPaused)
             {
-                videoPlayer.time = _timeProvider.AudioTime;
+                videoPlayer.time = GetPvTime();
                 videoPlayer.Play();
                 videoPlayer.Pause();
                 return;
             }
-            var delta = (float)videoPlayer.clockTime - _timeProvider.AudioTime;
+            var rawPvTime = _timeProvider.AudioTime - PvOffset;
+            if (rawPvTime <= 0)
+            {
+                videoPlayer.time = 0;
+                videoPlayer.Pause();
+                _videoWaitingForOffset = true;
+                return;
+            }
+
+            if (_videoWaitingForOffset)
+            {
+                videoPlayer.time = rawPvTime;
+                videoPlayer.Play();
+                _videoWaitingForOffset = false;
+                return;
+            }
+
+            var pvTime = GetPvTime();
+            var delta = (float)videoPlayer.clockTime - pvTime;
             smoothRDelta += (Time.unscaledDeltaTime - smoothRDelta) * 0.01f;
             if (_timeProvider.AudioTime < 0) return;
             var realSpeed = Time.deltaTime / smoothRDelta;
@@ -93,6 +114,8 @@ namespace MajdataViewX.Managers
             else
                 videoPlayer.playbackSpeed = _timeProvider.CurrentSpeed;
         }
+
+        private float GetPvTime() => Mathf.Max(0f, _timeProvider.AudioTime - PvOffset);
 
         public void PlaySongDetail()
         {
@@ -153,9 +176,13 @@ namespace MajdataViewX.Managers
 
                 while (_timeProvider.AudioTime <= 0) yield return new WaitForEndOfFrame();
                 while (!videoPlayer.isPrepared) yield return new WaitForEndOfFrame();
-                videoPlayer.Play();
-                videoPlayer.time = _timeProvider.AudioTime;
+                videoPlayer.time = GetPvTime();
                 _videoPaused = false;
+                _videoWaitingForOffset = _timeProvider.AudioTime - PvOffset <= 0;
+                if (_videoWaitingForOffset)
+                    videoPlayer.Pause();
+                else
+                    videoPlayer.Play();
 
                 var scale = videoPlayer.height / (float)videoPlayer.width;
                 if (ResizeBg)
@@ -187,6 +214,7 @@ namespace MajdataViewX.Managers
         {
             videoPlayer.Stop();
             _videoPaused = false;
+            _videoWaitingForOffset = false;
             // 销毁上一曲背景图(Texture2D/Sprite)，避免滞留到下次 LoadBG
             DestroyLoadedBackground();
             gameObject.transform.localScale = new Vector3(CIRCLED_SCALE_X, CIRCLED_SCALE_X, CIRCLED_SCALE_X);
