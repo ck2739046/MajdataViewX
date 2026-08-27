@@ -341,31 +341,30 @@ namespace MajdataViewX.Managers
             if (CurrentUIType is UIType.Legacy)
             {
                 outputBuilder.Clear();
-                outputBuilder.Append("TAP: ");
                 outputBuilder.Append(TapFinishedCount);
                 outputBuilder.Append(" / ");
                 outputBuilder.Append(TapSum);
-                outputBuilder.Append("\nHOD: ");
+                outputBuilder.Append('\n');
                 outputBuilder.Append(HoldFinishedCount);
                 outputBuilder.Append(" / ");
                 outputBuilder.Append(HoldSum);
-                outputBuilder.Append("\nSLD: ");
+                outputBuilder.Append('\n');
                 outputBuilder.Append(SlideFinishedCount);
                 outputBuilder.Append(" / ");
                 outputBuilder.Append(SlideSum);
-                outputBuilder.Append("\nTOH: ");
+                outputBuilder.Append('\n');
                 outputBuilder.Append(TouchFinishedCount);
                 outputBuilder.Append(" / ");
                 outputBuilder.Append(TouchSum);
-                outputBuilder.Append("\nBRK: ");
+                outputBuilder.Append('\n');
                 outputBuilder.Append(BreakFinishedCount);
                 outputBuilder.Append(" / ");
                 outputBuilder.Append(BreakSum);
-                outputBuilder.Append("\nALL: ");
+                outputBuilder.Append('\n');
                 outputBuilder.Append(NoteFinishedCount);
                 outputBuilder.Append(" / ");
                 outputBuilder.Append(NoteSum);
-                outputBuilder.Append("\nMOD: ");
+                outputBuilder.Append("\n");
                 outputBuilder.Append(NoteHelper.Settings.AutoPlayMode switch
                 {
                     AutoPlayMode.Enable => "Enable",
@@ -378,11 +377,11 @@ namespace MajdataViewX.Managers
                 SetOutputText(objectCount);
 
                 outputBuilder.Clear();
-                outputBuilder.Append("FiNALE  Rate:\n");
-                outputBuilder.Append(ClassicRateFromCount, "000.00");
-                outputBuilder.Append("   %\nDELUXE Rate:\n");
-                outputBuilder.Append(DeluxeRateFromCount, "000.0000");
-                outputBuilder.Append(" % ");
+                outputBuilder.Append("FiNALE Rate\n");
+                outputBuilder.Append(ClassicRateFromCount, "0.00");
+                outputBuilder.Append("      %\nDELUXE Rate\n");
+                outputBuilder.Append(DeluxeRateFromCount, "0.0000");
+                outputBuilder.Append(" %");
                 SetOutputText(objectRate);
 
                 outputBuilder.Clear();
