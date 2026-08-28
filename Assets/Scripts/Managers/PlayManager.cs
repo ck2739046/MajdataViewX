@@ -150,6 +150,7 @@ namespace MajdataViewX.Managers
                 else
                 {
                     BgManager.hasVideo = false;
+                    _bgManager.ClearVideo();
                 }
 
                 _state = ViewStatus.Loaded;

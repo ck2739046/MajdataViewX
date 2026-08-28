@@ -50,6 +50,7 @@ namespace MajdataViewX.Managers
         private static Sprite? _emptySprite;
         bool _videoPaused;
         bool _videoWaitingForOffset;
+        private Coroutine? _videoWaitCoroutine;
 
         private void Awake()
         {
@@ -71,7 +72,9 @@ namespace MajdataViewX.Managers
 
         private void Update()
         {
-            if (hasVideo && _videoPaused)
+            if (!hasVideo) return;
+
+            if (_videoPaused)
             {
                 videoPlayer.time = GetPvTime();
                 videoPlayer.Play();
@@ -158,6 +161,7 @@ namespace MajdataViewX.Managers
 
         public void LoadVideo(string path)
         {
+            StopVideo();
             VideoUrl = "file://" + path;
         }
 
@@ -165,8 +169,17 @@ namespace MajdataViewX.Managers
         {
             if (!hasVideo) return;
 
+            if (_videoWaitCoroutine != null)
+            {
+                StopCoroutine(_videoWaitCoroutine);
+                _videoWaitCoroutine = null;
+            }
+
+            // 开始/恢复播放时清除暂停标志，避免协程误判为暂停而跳过尺寸计算
+            _videoPaused = false;
+
             videoPlayer.url = VideoUrl;
-            StartCoroutine(WaitFumenStart());
+            _videoWaitCoroutine = StartCoroutine(WaitFumenStart());
             IEnumerator WaitFumenStart()
             {
                 videoPlayer.Prepare();
@@ -176,6 +189,15 @@ namespace MajdataViewX.Managers
 
                 while (_timeProvider.AudioTime <= 0) yield return new WaitForEndOfFrame();
                 while (!videoPlayer.isPrepared) yield return new WaitForEndOfFrame();
+
+                // 若在准备期间被暂停，则保持暂停，避免旧协程覆盖暂停状态
+                if (_videoPaused)
+                {
+                    videoPlayer.Pause();
+                    _videoWaitCoroutine = null;
+                    yield break;
+                }
+
                 videoPlayer.time = GetPvTime();
                 _videoPaused = false;
                 _videoWaitingForOffset = _timeProvider.AudioTime - PvOffset <= 0;
@@ -199,6 +221,8 @@ namespace MajdataViewX.Managers
                     gameObject.transform.localScale = new Vector3(fitScale, fitScale * scale, fitScale);
                     spriteRender.material = circledBgMaterial;
                 }
+
+                _videoWaitCoroutine = null;
             }
         }
 
@@ -209,9 +233,31 @@ namespace MajdataViewX.Managers
             _videoPaused = true;
         }
 
+        public void StopVideo()
+        {
+            if (_videoWaitCoroutine != null)
+            {
+                StopCoroutine(_videoWaitCoroutine);
+                _videoWaitCoroutine = null;
+            }
+            videoPlayer.Stop();
+            _videoPaused = false;
+            _videoWaitingForOffset = false;
+        }
+
+        public void ClearVideo()
+        {
+            StopVideo();
+            VideoUrl = null;
+        }
 
         public void ResetState()
         {
+            if (_videoWaitCoroutine != null)
+            {
+                StopCoroutine(_videoWaitCoroutine);
+                _videoWaitCoroutine = null;
+            }
             videoPlayer.Stop();
             _videoPaused = false;
             _videoWaitingForOffset = false;
