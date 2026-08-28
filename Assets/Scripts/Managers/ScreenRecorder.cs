@@ -76,17 +76,13 @@ namespace MajdataViewX.Managers
                 return;
             }
 
-            if (Screen.width % 2 != 0 || Screen.height % 2 != 0)
-            {
-                _wsServer.Error($"Encoding cannot start: Resolution width and height must be even numbers. Current: {Screen.width}x{Screen.height}.");
-                return;
-            }
-
             const string finalName = "out.mp4";
 
             IsRecording = true;
-            var width = Screen.width;
-            var height = Screen.height;
+            // H.264 (NV12) requires even dimensions
+            // crop odd pixels so encoding always succeeds.
+            var width = Screen.width & ~1;
+            var height = Screen.height & ~1;
             var frameDuration = 1.0 / fps;
             var recordingElapsedTime = 0.0;
             var outputSucceeded = false;
