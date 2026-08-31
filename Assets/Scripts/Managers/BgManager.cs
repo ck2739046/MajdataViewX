@@ -50,6 +50,7 @@ namespace MajdataViewX.Managers
         private static Sprite? _emptySprite;
         bool _videoPaused;
         bool _videoWaitingForOffset;
+        bool _videoStopped;
         private Coroutine? _videoWaitCoroutine;
 
         private void Awake()
@@ -72,7 +73,7 @@ namespace MajdataViewX.Managers
 
         private void Update()
         {
-            if (!hasVideo) return;
+            if (!hasVideo || _videoStopped) return;
 
             if (_videoPaused)
             {
@@ -168,6 +169,7 @@ namespace MajdataViewX.Managers
         public void ShowVideo()
         {
             if (!hasVideo) return;
+            _videoStopped = false;
 
             if (_videoWaitCoroutine != null)
             {
@@ -259,6 +261,7 @@ namespace MajdataViewX.Managers
                 _videoWaitCoroutine = null;
             }
             videoPlayer.Stop();
+            _videoStopped = true;
             _videoPaused = false;
             _videoWaitingForOffset = false;
             // 销毁上一曲背景图(Texture2D/Sprite)，避免滞留到下次 LoadBG
