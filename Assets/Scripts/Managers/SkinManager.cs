@@ -425,10 +425,10 @@ namespace MajdataViewX.Managers
             Add(sources, NoteSp.TOUCH_BORDER_EACH_1, touchPath + "/touch_border_3_each.png");
             Add(sources, NoteSp.TOUCH_BORDER_BREAK_0, touchPath + "/touch_break_border_2.png");
             Add(sources, NoteSp.TOUCH_BORDER_BREAK_1, touchPath + "/touch_break_border_3.png");
-            Add(sources, NoteSp.TOUCH_BORDER_MINE_0, touchPath + "/touch_border_mine_2.png");
-            Add(sources, NoteSp.TOUCH_BORDER_MINE_1, touchPath + "/touch_border_mine_3.png");
-            Add(sources, NoteSp.TOUCH_BORDER_BREAK_MINE_0, touchPath + "/touch_break_border_mine_2.png");
-            Add(sources, NoteSp.TOUCH_BORDER_BREAK_MINE_1, touchPath + "/touch_break_border_mine_3.png");
+            Add(sources, NoteSp.TOUCH_BORDER_MINE_0, touchPath + "/touch_mine_border_2.png");
+            Add(sources, NoteSp.TOUCH_BORDER_MINE_1, touchPath + "/touch_mine_border_3.png");
+            Add(sources, NoteSp.TOUCH_BORDER_BREAK_MINE_0, touchPath + "/touch_break_mine_border_2.png");
+            Add(sources, NoteSp.TOUCH_BORDER_BREAK_MINE_1, touchPath + "/touch_break_mine_border_3.png");
 
             for (int i = 0; i < 4; i++)
             {

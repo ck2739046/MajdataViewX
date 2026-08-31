@@ -218,36 +218,19 @@ namespace MajdataViewX.Notes.Updaters
             }
 
             if (-timing < touch.wholeDuration &&
-                MajBurst.MultTouchHandler.CanShowBorder(touch.sensor, out var isThree, out var sprite))
+                MajBurst.MultTouchHandler.CanShowBorder(touch.sensor, out var sprite))
             {
-                if (!isThree)
+                var borderIdx = Interlocked.Increment(ref *TouchesWriteCountPtr) - 1;
+                touchesRender[borderIdx] = new SimpleRenderData
                 {
-                    var borderIdx = Interlocked.Increment(ref *TouchesWriteCountPtr) - 1;
-                    touchesRender[borderIdx] = new SimpleRenderData
-                    {
-                        pos = centerPos,
-                        angRad = 0,
-                        scale = new float2(1, 1),
-                        spriteId = sprite,
-                        color = new float4(1, 1, 1, touch.fanAlpha),
-                        brightness = 1f,
-                        sort = sortTime << 2,
-                    };
-                }
-                else
-                {
-                    var borderIdx = Interlocked.Increment(ref *TouchesWriteCountPtr) - 1;
-                    touchesRender[borderIdx] = new SimpleRenderData
-                    {
-                        pos = centerPos,
-                        angRad = 0,
-                        scale = new float2(1, 1),
-                        spriteId = sprite,
-                        color = new float4(1, 1, 1, touch.fanAlpha),
-                        brightness = 1f,
-                        sort = sortTime << 2,
-                    };
-                }
+                    pos = centerPos,
+                    angRad = 0,
+                    scale = new float2(1, 1),
+                    spriteId = sprite,
+                    color = new float4(1, 1, 1, touch.fanAlpha),
+                    brightness = 1f,
+                    sort = sortTime << 2,
+                };
             }
         }
 

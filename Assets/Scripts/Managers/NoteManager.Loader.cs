@@ -294,7 +294,12 @@ namespace MajdataViewX.Managers
                     // 官机算法是 转速 = 同头星星总长 / (总时间 * 15 * pi)
                     // 长度单位像素，时间单位ms，转速单位度/帧，转速最大是 18
                     // 这里 SlideLength 是 100ppu，SlideTime 是秒
-                    starTap.IsDouble = cnt >= 2;
+                    if (cnt >= 2)
+                    {
+                        starTap.IsDouble = true;
+                        // 解决贴图的方式有点丑陋。。。它工作
+                        starTap.Init();
+                    }
                     starTap.RotateSpeed = math.min(6f, length / ((float)time * 2 * math.PI));
                 }
             }

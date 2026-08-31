@@ -90,25 +90,22 @@ namespace MajdataViewX.Managers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool CanShowBorder(SensorType area, out bool isThree, out NoteSp sprite)
+        public readonly bool CanShowBorder(SensorType area, out NoteSp sprite)
         {
             var span = _spans[(int)area];
             var diff = _activeCounts[(int)area];
             if (diff <= 1)
             {
-                isThree = false;
                 sprite = default;
                 return false;
             }
             else if (diff == 2)
             {
-                isThree = false;
                 sprite = GetSpriteId(_registers[span.Current + 1], false);
                 return true;
             }
             else
             {
-                isThree = true;
                 sprite = GetSpriteId(_registers[span.Current + 2], true);
                 return true;
             }

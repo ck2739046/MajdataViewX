@@ -80,8 +80,7 @@ powershell -ExecutionPolicy Bypass -File .\ffmpeg-builder\build.ps1
 ## 已知问题 / Known Issues
 
 1. **不支持动态比特率的 mp3 文件**
-2. **用内置录屏时，请确保 view 的分辨率是偶数。**
-3. **部分语法规则较为宽松，可以在 Majdata 中运行的谱面可能无法在其他软件中（如 maipad、simai、Astro）运行**
+2. **部分语法规则较为宽松，可以在 Majdata 中运行的谱面可能无法在其他软件中（如 maipad、simai、Astro）运行**
 
 <details>
 <summary>v5.x版本会出现的问题</summary>
