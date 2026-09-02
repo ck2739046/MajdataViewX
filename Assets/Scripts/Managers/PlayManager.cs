@@ -31,6 +31,8 @@ namespace MajdataViewX.Managers
             ErrMsg = _errMsg,
         };
 
+        public static ViewStatus State => _state;
+
         // 直接存储 MajSimai 原始类型：Update 从共享内存拿到已解析数据，Play 不再全量解析
         private static SimaiFile _file = SimaiFile.Empty(string.Empty, string.Empty);
         private static SimaiChart _chart = SimaiChart.Empty;
