@@ -372,6 +372,46 @@ namespace MajdataViewX.Managers
             }
         }
 
+        /// <summary>回到刚启动时的初始状态：停止播放、卸载媒体、清空谱面与计数并刷新 UI。</summary>
+        public async UniTask ResetAsync()
+        {
+            while (_state is ViewStatus.Busy)
+                await UniTask.Yield();
+
+            _state = ViewStatus.Busy;
+            try
+            {
+                await UniTask.SwitchToMainThread();
+
+                _screenRecorder.StopRecording();
+                canvasButtons.SetActive(true);
+
+                _timeProvider.ResetState();
+                _audioManager.ResetState();
+                _bgManager.ResetState();
+                _effectManager.ResetState();
+                _allPerfectManager.ResetState();
+                _noteManager.ResetState();
+                _objectCounter.ResetCur();
+                _objectCounter.ResetLoaded();
+
+                _file = SimaiFile.Empty(string.Empty, string.Empty);
+                _chart = SimaiChart.Empty;
+                _errMsg = string.Empty;
+
+                // 空谱加载会清空 note NativeList、SVList 及标题/等级文本
+                await _dataLoader.Load(_chart, string.Empty, string.Empty, 0);
+                _objectCounter.ResetDisplay();
+
+                _state = ViewStatus.Idle;
+            }
+            catch (Exception ex)
+            {
+                _errMsg = ex.ToString();
+                _state = ViewStatus.Error;
+            }
+        }
+
         private void OnDestroy()
         {
             Volatile.Write(ref _audioManagerThreadRunning, 0);

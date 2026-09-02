@@ -226,6 +226,8 @@ namespace MajdataViewX.Managers
             OutputTime();
         }
 
+        public void ResetDisplay() => UpdateOutput();
+
         private void OutputMain()
         {
             switch (TextMode)

@@ -261,6 +261,10 @@ namespace MajdataViewX.Managers
                 _videoWaitCoroutine = null;
             }
             videoPlayer.Stop();
+            videoPlayer.url = ""; // 释放视频文件句柄，否则文件被占用无法删除
+            VideoUrl = null;
+            hasBg = false;
+            hasVideo = false;
             _videoStopped = true;
             _videoPaused = false;
             _videoWaitingForOffset = false;

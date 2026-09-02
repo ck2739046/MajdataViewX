@@ -139,6 +139,11 @@ namespace MajdataViewX
                         Response(MajWsResponseType.Ok, PlayManager.Summary);
                         Debug.Log("request finished: State");
                         break;
+                    case MajWsResetRequest:
+                        await _playManager.ResetAsync();
+                        Response(MajWsResponseType.Ok, PlayManager.Summary);
+                        Debug.Log("request finished: Reset");
+                        break;
                     default:
                         Error("Not Supported");
                         Debug.LogError("request failed: Not Supported");
