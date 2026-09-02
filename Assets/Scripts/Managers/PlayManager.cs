@@ -12,6 +12,7 @@ using MemoryPack;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Globalization;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
@@ -190,7 +191,7 @@ namespace MajdataViewX.Managers
             _bgManager.ResizeBg = _setting.ResizeBg;
         }
 
-        public async UniTask UpdateAsync(long fileLength, long chartLength, int selectedDiff, float pvOffset)
+        public async UniTask UpdateAsync(long fileLength, long chartLength, int selectedDiff)
         {
             while (_state is ViewStatus.Busy)
                 await UniTask.Yield();
@@ -212,7 +213,11 @@ namespace MajdataViewX.Managers
             _chart = chart;
 
             _timeProvider.offset = _file.Offset;
-            _bgManager.PvOffset = pvOffset;
+            var pvOffsetCommand = file.Commands.FirstOrDefault(c => c.Prefix == "pv_offset");
+            _bgManager.PvOffset = pvOffsetCommand.Prefix == "pv_offset" &&
+                float.TryParse(pvOffsetCommand.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var pvOffset)
+                ? pvOffset
+                : 0f;
             //answer
             var clockCount = 0;
             var clockCommand = file.Commands.FirstOrDefault(c => c.Prefix == "clock_count");
