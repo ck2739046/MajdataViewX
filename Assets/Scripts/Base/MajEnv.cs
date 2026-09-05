@@ -25,5 +25,18 @@ namespace MajdataViewX.Base
         public const long MmfChartDataCapacity = 64 * 1024 * 1024; //64mb
         public static string MmfChartDataPath =>
             Path.Combine(SharedMemoryPath, "majdata_chart.dat");
+
+        //外部 FFmpeg 路径；仅 Windows 找不到时返回 null
+        public static string? ExternalFfmpegPath
+        {
+            get {
+#if UNITY_STANDALONE_WIN
+                var path = Path.GetFullPath(Path.Combine(MajBase, "..", "ffmpeg", "bin", "ffmpeg.exe"));
+                return File.Exists(path) ? path : null;
+#else
+                return null;
+#endif
+            }
+        }
     }
 }

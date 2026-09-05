@@ -1,8 +1,12 @@
 ﻿#nullable enable
 
 
+using Cysharp.Threading.Tasks;
+using MajdataViewX.Base;
 using MajdataViewX.Utils;
+using System;
 using System.Collections;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Video;
@@ -53,6 +57,15 @@ namespace MajdataViewX.Managers
         bool _videoStopped;
         private Coroutine? _videoWaitCoroutine;
 
+        private ExternalPvDecoder? _externalDecoder;
+        private ExternalPvDisplay? _pvDisplay;
+        private string? _videoFilePath;
+        private int _externalPvFps;
+        private bool _externalPrepInProgress;
+
+        /// <summary>录制期是否由外部 FFmpeg 解码 PV（失败时保持 false，走 VideoPlayer）。</summary>
+        public bool IsExternalPvActive { get; private set; }
+
         private void Awake()
         {
             _bgManager = this;
@@ -74,6 +87,7 @@ namespace MajdataViewX.Managers
         private void Update()
         {
             if (!hasVideo || _videoStopped) return;
+            if (_externalPrepInProgress || IsExternalPvActive) return;
 
             if (_videoPaused)
             {
@@ -121,6 +135,132 @@ namespace MajdataViewX.Managers
 
         private float GetPvTime() => Mathf.Max(0f, _timeProvider.AudioTime - PvOffset);
 
+        /// <summary>录制前尝试用外部 FFmpeg 顺序解码 PV；任何失败返回 false，由调用方回退 VideoPlayer。</summary>
+        public async UniTask<bool> TryPrepareExternalPvAsync(int fps, int exportWidth, int exportHeight)
+        {
+            if (IsExternalPvActive) return true;
+            if (!hasVideo || string.IsNullOrWhiteSpace(_videoFilePath) || fps <= 0)
+                return false;
+
+            var ffmpegPath = MajEnv.ExternalFfmpegPath;
+            if (ffmpegPath == null)
+                return false;
+
+            _externalPrepInProgress = true;
+            try
+            {
+                // 仅用 VideoPlayer 校验视频可打开，随后停止，避免其继续解码渲染。
+                if (_videoWaitCoroutine != null)
+                {
+                    StopCoroutine(_videoWaitCoroutine);
+                    _videoWaitCoroutine = null;
+                }
+
+                videoPlayer.Stop();
+                videoPlayer.url = VideoUrl;
+                videoPlayer.Prepare();
+
+                var deadline = Time.realtimeSinceStartup + 5f;
+                while (!videoPlayer.isPrepared)
+                {
+                    if (Time.realtimeSinceStartup > deadline)
+                    {
+                        videoPlayer.Stop();
+                        RestoreVideoPlayerFallback();
+                        return false;
+                    }
+                    await UniTask.Yield();
+                }
+
+                if (exportWidth <= 0 || exportHeight <= 0)
+                {
+                    videoPlayer.Stop();
+                    RestoreVideoPlayerFallback();
+                    return false;
+                }
+
+                videoPlayer.Stop();
+
+                _externalPvFps = fps;
+                _externalDecoder = new ExternalPvDecoder(ffmpegPath, _videoFilePath, fps, exportWidth, exportHeight);
+                if (!_externalDecoder.TryStart(out var error))
+                {
+                    Debug.LogWarning($"[Export] 外部 FFmpeg 启动失败，回退 VideoPlayer：{error}");
+                    AbortExternalPv();
+                    RestoreVideoPlayerFallback();
+                    return false;
+                }
+
+                // 首帧就绪校验：解不出第 0 帧则整段回退。
+                var first = await _externalDecoder.ReadFrameAtOrBeforeAsync(0, startup: true, CancellationToken.None);
+                if (first == null)
+                {
+                    AbortExternalPv();
+                    RestoreVideoPlayerFallback();
+                    return false;
+                }
+
+                // 用外部纹理创建 Sprite 并直接绑定到 SpriteRenderer：sprite 的 _MainTex 即该纹理，
+                // 后续 LoadRawTextureData/Apply 更新同一纹理即可逐帧刷新，避免属性块失效导致白屏。
+                _pvDisplay ??= new ExternalPvDisplay(spriteRender, fullscreenBgMaterial, circledBgMaterial);
+                if (!_pvDisplay.Create(exportWidth, exportHeight, ResizeBg))
+                {
+                    AbortExternalPv();
+                    RestoreVideoPlayerFallback();
+                    return false;
+                }
+
+                _pvDisplay.ApplyFrame(first);
+                _externalDecoder.ReleaseFrame(first);
+                IsExternalPvActive = true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Export] 外部 FFmpeg 准备失败，回退 VideoPlayer：{ex}");
+                AbortExternalPv();
+                RestoreVideoPlayerFallback();
+                return false;
+            }
+            finally
+            {
+                _externalPrepInProgress = false;
+            }
+        }
+
+        /// <summary>每输出帧捕获前调用：按 PV 目标时间取外部解码帧并上传，解码不足时等待（背压）。</summary>
+        public async UniTask PresentExternalPvFrameAsync()
+        {
+            if (!IsExternalPvActive || _externalDecoder == null) return;
+
+            var pvTime = Mathf.Max(0f, _timeProvider.AudioTime - PvOffset);
+            var targetIndex = (long)Math.Floor(pvTime * _externalPvFps);
+            if (_pvDisplay == null || targetIndex <= _pvDisplay.LastAppliedIndex) return;
+
+            var frame = await _externalDecoder.ReadFrameAtOrBeforeAsync(targetIndex, startup: false, CancellationToken.None);
+            if (frame == null) return; // 已到 EOF，保持最后一帧
+
+            _pvDisplay.ApplyFrame(frame);
+            _externalDecoder.ReleaseFrame(frame);
+        }
+
+        public void AbortExternalPv()
+        {
+            IsExternalPvActive = false;
+            if (_externalDecoder != null)
+            {
+                _externalDecoder.Dispose();
+                _externalDecoder = null;
+            }
+            _pvDisplay?.Release();
+        }
+
+        private void RestoreVideoPlayerFallback()
+        {
+            if (hasVideo && !_videoStopped)
+                ShowVideo();
+        }
+
         public void PlaySongDetail()
         {
             songDetail.SetActive(true);
@@ -163,6 +303,7 @@ namespace MajdataViewX.Managers
         public void LoadVideo(string path)
         {
             StopVideo();
+            _videoFilePath = path;
             VideoUrl = "file://" + path;
         }
 
@@ -245,12 +386,14 @@ namespace MajdataViewX.Managers
             videoPlayer.Stop();
             _videoPaused = false;
             _videoWaitingForOffset = false;
+            AbortExternalPv();
         }
 
         public void ClearVideo()
         {
             StopVideo();
             VideoUrl = null;
+            _videoFilePath = null;
         }
 
         public void ResetState()
@@ -260,9 +403,12 @@ namespace MajdataViewX.Managers
                 StopCoroutine(_videoWaitCoroutine);
                 _videoWaitCoroutine = null;
             }
+            AbortExternalPv();
+            _externalPrepInProgress = false;
             videoPlayer.Stop();
             videoPlayer.url = ""; // 释放视频文件句柄，否则文件被占用无法删除
             VideoUrl = null;
+            _videoFilePath = null;
             hasBg = false;
             hasVideo = false;
             _videoStopped = true;
@@ -281,6 +427,7 @@ namespace MajdataViewX.Managers
 
         private void OnDestroy()
         {
+            AbortExternalPv();
             DestroyLoadedBackground();
             if (_emptySprite != null)
             {

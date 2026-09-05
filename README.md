@@ -38,3 +38,4 @@
 - 调整 legacy ui 样式以匹配正方形
 - 添加 note_counter / rate 可见性 按钮开关
 - 最小化/闲置时 锁帧
+- 导出视频的 pv 解码使用外部 ffmpeg

@@ -118,11 +118,18 @@ namespace MajdataViewX.Managers
                     throw new InvalidOperationException(
                         "RenderingOut could not create the video encoder.");
 
+                // 外部 FFmpeg 独立解码 PV；准备失败则回退 Unity VideoPlayer（不改动旧路径）。
+                // 必须在 onStart 之前完成
+                var useExternalPv = await _bgManager.TryPrepareExternalPvAsync(fps, width, height);
+
                 onStart?.Invoke();
                 _audioManager.BeginRecordingAudio(_timeProvider.AudioTime, _timeProvider.CurrentSpeed);
 
                 while (IsRecording)
                 {
+                    if (useExternalPv)
+                        await _bgManager.PresentExternalPvFrameAsync();
+
                     await UniTask.WaitForEndOfFrame(this);
                     var frameEndTime = recordingElapsedTime + frameDuration;
                     _audioManager.UpdateRecordingAudioFrame(recordingElapsedTime, frameEndTime);
@@ -154,6 +161,8 @@ namespace MajdataViewX.Managers
             finally
             {
                 IsRecording = false;
+                if (_bgManager != null)
+                    _bgManager.AbortExternalPv();
                 try
                 {
                     FreeEncoder(ref encoder);
