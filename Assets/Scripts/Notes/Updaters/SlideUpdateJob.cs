@@ -61,7 +61,9 @@ namespace MajdataViewX.Notes.Updaters
 
             var tapTiming = TimeData.NoteTime - slide.tapTime;
             var timing = TimeData.NoteTime - slide.shootTime;
-            slide.process = math.saturate(timing / math.max(slide.LastFor, 0.001f));
+            var lastFor = math.max(slide.LastFor, 0.001f);
+            slide.process = math.saturate(timing / lastFor);
+            slide.visualProcess = math.saturate((timing + NoteHelper.SLIDE_VISUAL_LEAD_SEC) / lastFor);
 
             // 播放期 processIdx 只增不减，暂停查看需按当前时间重建
             if (!slide.isWifi)
@@ -90,7 +92,9 @@ namespace MajdataViewX.Notes.Updaters
 
             var tapTiming = TimeData.NoteTime - slide.tapTime;
             var timing = TimeData.NoteTime - slide.shootTime;
-            slide.process = math.saturate(timing / math.max(slide.LastFor, 0.001f));
+            var lastFor = math.max(slide.LastFor, 0.001f);
+            slide.process = math.saturate(timing / lastFor);
+            slide.visualProcess = math.saturate((timing + NoteHelper.SLIDE_VISUAL_LEAD_SEC) / lastFor);
 
             if (slide.isSlideEnd)
             {
@@ -206,14 +210,19 @@ namespace MajdataViewX.Notes.Updaters
             {
                 var idxLast = slide.slideArrowsCount - 1; //这里借助路径起终点画star
 
+                // 逻辑进度：维持原有 processIdx 语义，供 AutoplayUpdate 消费
                 var distance = slide.process * slide.slideArrows[idxLast].L;
                 while (slide.slideArrows[slide.processIdx].L < distance && slide.processIdx < idxLast) slide.processIdx++;
                 // processIdx 初值是 1 所以一定不会下溢，然后循环条件保证了不会上溢
-                var idx0 = slide.processIdx - 1;
-                var idx1 = slide.processIdx;
-                var p0 = slide.slideArrows[idx0];
-                var p1 = slide.slideArrows[idx1];
-                var t = math.unlerp(p0.L, p1.L, distance);
+
+                // 视觉进度：visualProcess >= process，故可从 processIdx 起单调前推
+                var visDistance = slide.visualProcess * slide.slideArrows[idxLast].L;
+                var visIdx = slide.processIdx;
+                while (slide.slideArrows[visIdx].L < visDistance && visIdx < idxLast) visIdx++;
+
+                var p0 = slide.slideArrows[visIdx - 1];
+                var p1 = slide.slideArrows[visIdx];
+                var t = math.unlerp(p0.L, p1.L, visDistance);
 
                 var starPosX = math.lerp(p0.X, p1.X, t);
                 var starPosY = math.lerp(p0.Y, p1.Y, t);
@@ -243,9 +252,9 @@ namespace MajdataViewX.Notes.Updaters
                 slide.processIdx = math.max((int)(slide.process * (slide.slideArrowsCount - 1)), 1);
 
                 var starPos = stackalloc float2[3]; //C, L, R   //这里不借助slideArrows，提供不了另两条的信息
-                slide.starPos = starPos[0] = slide.starPosConstC * slide.process + slide.starPosStart;
-                slide.starPosL = starPos[1] = slide.starPosConstL * slide.process + slide.starPosStart;
-                slide.starPosR = starPos[2] = slide.starPosConstR * slide.process + slide.starPosStart;
+                slide.starPos = starPos[0] = slide.starPosConstC * slide.visualProcess + slide.starPosStart;
+                slide.starPosL = starPos[1] = slide.starPosConstL * slide.visualProcess + slide.starPosStart;
+                slide.starPosR = starPos[2] = slide.starPosConstR * slide.visualProcess + slide.starPosStart;
                 var nIdx = Interlocked.Add(ref *NotesWriteCountPtr, 3) - 3;
                 for (var i = 0; i < 3; i++)
                 {

@@ -49,6 +49,11 @@ namespace MajdataViewX.Notes
         public const float SLIDE_CHECK_AHEAD_TIME_MSEC = 6 * FRAME_LENGTH_MSEC;
         public const float SLIDE_FORCE_MISS = 33 * FRAME_LENGTH_MSEC;
 
+        /// <summary>
+        /// slide 第二段（星星沿轨迹移动）整体提前 60fps 一帧，仅影响渲染
+        /// </summary>
+        public const float SLIDE_VISUAL_LEAD_SEC = FRAME_LENGTH_SEC;
+
         public const float TOUCH_JUDGE_SEG_1ST_PERFECT_MSEC = 9 * FRAME_LENGTH_MSEC;
         public const float TOUCH_JUDGE_SEG_2ND_PERFECT_MSEC = 10.5f * FRAME_LENGTH_MSEC;
         public const float TOUCH_JUDGE_SEG_3RD_PERFECT_MSEC = 12 * FRAME_LENGTH_MSEC;

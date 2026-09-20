@@ -84,7 +84,8 @@ namespace MajdataViewX.Notes.NoteDatas
         public NoteSp slideSprite;
         public int eaten;
         //star
-        public float process;
+        public float process;       // 逻辑进度：判定与自播推进用
+        public float visualProcess; // 渲染进度：比 process 提前 SLIDE_VISUAL_LEAD_SEC，仅驱动星星位置
         public int processIdx; // 标记现在引导星星走到哪儿了（引导星星之后的第一个箭头idx）
         public float starAlpha;
         public float starScale;
@@ -117,6 +118,7 @@ namespace MajdataViewX.Notes.NoteDatas
             starAlpha = 0;
             starScale = 0;
             process = 0;
+            visualProcess = 0;
             processIdx = 1;
             slideAlpha = 0;
             slideOKAlpha = 1f;
@@ -230,6 +232,7 @@ namespace MajdataViewX.Notes.NoteDatas
             eaten = default;
 
             process = default;
+            visualProcess = default;
             processIdx = 1;
             starScale = default;
             judgeCurrent = default;
