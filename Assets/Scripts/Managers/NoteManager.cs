@@ -35,6 +35,10 @@ namespace MajdataViewX.Managers
         NativeList<TouchData> touches = new(1024, Allocator.Persistent);
         NativeList<TouchHoldData> touchHolds = new(1024, Allocator.Persistent);
 
+        NativeList<FireworkEvent> fireworks = new(64, Allocator.Persistent);
+        /// <summary>hanabi 触发时间线，按 time 非降序。仅供主线程按 NoteTime 派生重放。</summary>
+        public NativeArray<FireworkEvent> Fireworks => fireworks.AsArray();
+
         NativeList<DJAutoPlayData> plays = new(2048, Allocator.Persistent);
 
         [SerializeField]
@@ -416,6 +420,7 @@ namespace MajdataViewX.Managers
             if (slides.IsCreated) slides.Dispose();
             if (touches.IsCreated) touches.Dispose();
             if (touchHolds.IsCreated) touchHolds.Dispose();
+            if (fireworks.IsCreated) fireworks.Dispose();
             if (plays.IsCreated) plays.Dispose();
             if (_djAutoHands.IsCreated) _djAutoHands.Dispose();
             if (_djAutoTouchInfosThisTiming.IsCreated) _djAutoTouchInfosThisTiming.Dispose();
@@ -433,5 +438,12 @@ namespace MajdataViewX.Managers
             _prevChain.Complete();
             ResetDJAutoHands();
         }
+    }
+
+    /// <summary>一次 hanabi 的触发时刻（touch 为命中刻，touchhold 为按住结束刻）与位置。</summary>
+    public struct FireworkEvent
+    {
+        public float time;
+        public SensorType sensor;
     }
 }

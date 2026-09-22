@@ -1,6 +1,7 @@
 #nullable enable
 
 using MajdataViewX.Base;
+using MajdataViewX.Types.Enums;
 using MajdataViewX.Types.Input;
 using MajdataViewX.Types.Notes;
 using System;
@@ -24,6 +25,9 @@ namespace MajdataViewX.Managers
         private static readonly int BGreatHash = Animator.StringToHash("bGreat");
         private static readonly int BGoodHash = Animator.StringToHash("bGood");
         private static readonly int FireHash = Animator.StringToHash("fire");
+        // Play() 收的是状态全路径哈希（Hanabi 控制器只有一个 Base Layer）
+        private static readonly int FireStateHash = Animator.StringToHash("Base Layer.Fire");
+        private static readonly int FireIdleStateHash = Animator.StringToHash("Base Layer.FireIdle");
 
         [SerializeField]
         GameObject effectPrefab;
@@ -46,6 +50,10 @@ namespace MajdataViewX.Managers
 
         private GameObject fireworkEffect;
         private Animator fireworkAnimator;
+        private float fireworkDurationSec = 1.3333334f; // Fire 剪辑长度兜底值
+        private int derivedFireworkIndex = -1;
+        private float derivedFireworkTime;
+        private bool derivedFireworkActive;
 
         private void Awake()
         {
@@ -101,6 +109,13 @@ namespace MajdataViewX.Managers
                 fireworkEffect = GameObject.Find("FireworkEffect");
                 fireworkAnimator = fireworkEffect.GetComponent<Animator>();
             }
+
+            foreach (var clip in fireworkAnimator.runtimeAnimatorController.animationClips)
+                if (clip.name == "Fire")
+                {
+                    fireworkDurationSec = clip.length;
+                    break;
+                }
         }
 
         private void OnDestroy()
@@ -140,6 +155,78 @@ namespace MajdataViewX.Managers
 
             for (var i = 0; i < judgeEffectRequests.Length; i++)
                 judgeEffectRequests[i] = default;
+
+            UpdateDerivedFirework();
+        }
+
+        /// <summary>暂停/静载/回溯时按 NoteTime 反推烟花相位，与 note 的 SeeOnly 渲染同域。</summary>
+        private void UpdateDerivedFirework()
+        {
+            if (_timeProvider.IsStart ||
+                fireworkAnimator == null ||
+                PlayManager.State is not (ViewStatus.Loaded or ViewStatus.Paused))
+            {
+                ReleaseDerivedFirework();
+                return;
+            }
+
+            var noteTime = _timeProvider.NoteTime;
+            var index = FindFireworkIndexAt(_noteManager.Fireworks, noteTime, fireworkDurationSec);
+
+            if (!derivedFireworkActive)
+            {
+                derivedFireworkActive = true;
+                derivedFireworkIndex = -1;
+                derivedFireworkTime = float.NaN;
+                fireworkAnimator.speed = 0f;
+                // 暂停瞬间可能挂着一个尚未消费的 trigger，冻结时不能把它漏出去
+                fireworkAnimator.ResetTrigger(FireHash);
+            }
+
+            if (index == derivedFireworkIndex && noteTime == derivedFireworkTime) return;
+
+            derivedFireworkIndex = index;
+            derivedFireworkTime = noteTime;
+            if (index < 0)
+            {
+                // 窗口内没有烟花：停在不可见的静止态，保持冻结
+                fireworkAnimator.Play(FireIdleStateHash, 0, 0f);
+            }
+            else
+            {
+                var ev = _noteManager.Fireworks[index];
+                SetFireworkPosition((int)ev.sensor + BUTTON_COUNT);
+                fireworkAnimator.Play(FireStateHash, 0, (noteTime - ev.time) / fireworkDurationSec);
+            }
+            fireworkAnimator.Update(0f); // Play 只排队，不手动求值则本帧仍是旧姿势
+        }
+
+        /// <summary>最后一个 time &lt;= noteTime 且仍在 Fire 窗口内的事件；更早的都已放完。</summary>
+        private static int FindFireworkIndexAt(NativeArray<FireworkEvent> events, float noteTime, float durationSec)
+        {
+            int lo = 0, hi = events.Length - 1, found = -1;
+            while (lo <= hi)
+            {
+                var mid = (lo + hi) >> 1;
+                if (events[mid].time <= noteTime)
+                {
+                    found = mid;
+                    lo = mid + 1;
+                }
+                else hi = mid - 1;
+            }
+            if (found < 0 || noteTime - events[found].time >= durationSec) return -1;
+            return found;
+        }
+
+        private void ReleaseDerivedFirework()
+        {
+            if (!derivedFireworkActive) return;
+            derivedFireworkActive = false;
+            derivedFireworkIndex = -1;
+            derivedFireworkTime = 0f;
+            // 恢复原速：动画从中途接着播，正好接上冻结时的相位
+            fireworkAnimator.speed = 1f;
         }
 
         private void PlayTapEffect(int pos, JudgeGrade judge, bool isBreak)
@@ -294,18 +381,32 @@ namespace MajdataViewX.Managers
 
         public void PlayFireworkEffect(int pos)
         {
+            SetFireworkPosition(pos);
+            fireworkAnimator.SetTrigger(FireHash);
+        }
+
+        private void SetFireworkPosition(int pos)
+        {
             float2 worldPos;
             if (pos is < 0 or > EFFECT_COUNT) return;
             else if (pos < BUTTON_COUNT) worldPos = MajPos.GetBtnPos(pos);
             else worldPos = MajPos.GetAreaPos((SensorType)(pos - 8));
             fireworkEffect.transform.position = new float3(worldPos, 0);
-            fireworkAnimator.SetTrigger(FireHash);
         }
 
         public void ResetState()
         {
             for (var i = 0; i < judgeEffectRequests.Length; i++)
                 judgeEffectRequests[i] = default;
+
+            derivedFireworkIndex = -1;
+            derivedFireworkTime = 0f;
+            derivedFireworkActive = false;
+            if (fireworkAnimator == null) return; // Start 之前就收到 Reset
+            fireworkAnimator.speed = 1f;
+            fireworkAnimator.ResetTrigger(FireHash);
+            fireworkAnimator.Play(FireIdleStateHash, 0, 0f);
+            fireworkAnimator.Update(0f);
         }
     }
 

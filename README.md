@@ -39,3 +39,5 @@
 - 添加 note_counter / rate 可见性 按钮开关
 - 最小化/闲置时 锁帧
 - 导出视频的 pv 解码使用外部 ffmpeg
+- 让 hanabi 烟花特效可暂停可回溯
+- 让 slide 提早 1 帧开始移动

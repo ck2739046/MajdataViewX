@@ -27,6 +27,12 @@ namespace MajdataViewX.Managers
         private readonly int[] _buttonOrderIndex = new int[BUTTON_COUNT];
         private readonly int[] _sensorOrderIndex = new int[SENSOR_COUNT];
 
+        /// <summary>fireworks 排序键：触发时刻升序。</summary>
+        private struct FireworkEventTimeComparer : IComparer<FireworkEvent>
+        {
+            public int Compare(FireworkEvent a, FireworkEvent b) => a.time.CompareTo(b.time);
+        }
+
         private unsafe SlideArea* slideAreaPool;
         private unsafe SlidePose* slidePosePool;
         private int areaPoolIndex = 0;
@@ -48,6 +54,7 @@ namespace MajdataViewX.Managers
             slides.Clear();
             touches.Clear();
             touchHolds.Clear();
+            fireworks.Clear();
             plays.Clear();
             _djAutoTouchInfosThisTiming.Clear();
             touchGroupTotalCounts.Clear();
@@ -79,6 +86,9 @@ namespace MajdataViewX.Managers
             {
                 LoadTiming(timing);
             }
+
+            // touchhold 的烟花在按住结束刻，可能晚于其后出现的 note，故需重排
+            fireworks.Sort(new FireworkEventTimeComparer());
 
 
 
@@ -668,6 +678,8 @@ namespace MajdataViewX.Managers
                 IsBreak = note.IsBreak,
                 IsMine = note.IsMine
             });
+            if (note.IsHanabi && !note.IsMine)
+                fireworks.Add(new FireworkEvent { time = touch.time, sensor = sensor });
 
             if (!note.IsMine &&
                 NoteHelper.Settings.AutoPlayMode is AutoPlayMode.DJAutoButton or AutoPlayMode.DJAutoSensor)
@@ -713,6 +725,9 @@ namespace MajdataViewX.Managers
             }
             th.Init();
             touchHolds.Add(th);
+            if (note.IsHanabi && !note.IsMine)
+                // 烟花在按住结束刻触发，见 TouchHoldUpdateJob.AutoplayUpdate 的 EndNote 时机
+                fireworks.Add(new FireworkEvent { time = th.time + th.LastFor, sensor = sensor });
 
             if (!note.IsMine &&
                 NoteHelper.Settings.AutoPlayMode is AutoPlayMode.DJAutoButton or AutoPlayMode.DJAutoSensor)
