@@ -62,6 +62,16 @@ namespace MajdataViewX
                                PlayManager.Summary.State == ViewStatus.Busy)
                             await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
 
+                        if (IsUpdateRequest(bytes))
+                        {
+                            while (MessageQueue.TryPeek(out var nextBytes) &&
+                                   IsUpdateRequest(nextBytes) &&
+                                   MessageQueue.TryDequeue(out var latestBytes))
+                            {
+                                bytes = latestBytes;
+                            }
+                        }
+
                         await HandleMessageAsync(bytes);
                     }
                     else
@@ -72,6 +82,18 @@ namespace MajdataViewX
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+            }
+        }
+
+        private static bool IsUpdateRequest(byte[] bytes)
+        {
+            try
+            {
+                return MemoryPackSerializer.Deserialize<MajWsRequest>(bytes) is MajWsUpdateRequest;
+            }
+            catch
+            {
+                return false;
             }
         }
 

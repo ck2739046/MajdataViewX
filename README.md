@@ -4,6 +4,7 @@
 
 - 添加 pv offset
 - ws 协议拓展 reset
+- 防止高频更新造成崩溃
 - 新代码高亮主题
 - 鼠标悬停在行号上，显示拍号 tooltip
 
@@ -34,6 +35,7 @@
 
 - 添加 pv offset
 - ws 协议拓展 reset
+- 防止高频更新造成崩溃
 - 禁用 全屏按钮 & 分辨率调整下拉菜单
 - 调整 legacy ui 样式以匹配正方形
 - 添加 note_counter / rate 可见性 按钮开关

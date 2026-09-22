@@ -191,47 +191,67 @@ namespace MajdataViewX.Managers
             _bgManager.ResizeBg = _setting.ResizeBg;
         }
 
-        public async UniTask UpdateAsync(long fileLength, long chartLength, int selectedDiff)
+        public async UniTask<bool> UpdateAsync(long fileLength, long chartLength, int selectedDiff)
         {
             while (_state is ViewStatus.Busy)
                 await UniTask.Yield();
 
             var previousState = _state;
             _state = ViewStatus.Busy;
+            try
+            {
+                if (fileLength <= 0 || chartLength <= 0 ||
+                    fileLength > int.MaxValue || chartLength > int.MaxValue ||
+                    fileLength > MajEnv.MmfChartDataCapacity - chartLength ||
+                    selectedDiff is < 0 or > 6)
+                {
+                    Debug.LogWarning(
+                        $"[Chart Update Skipped] Invalid update metadata: fileLength={fileLength}, " +
+                        $"chartLength={chartLength}, selectedDiff={selectedDiff}");
+                    return false;
+                }
 
-            // 从共享内存读取 Edit 写入的两段 MemoryPack 字节并反序列化：
-            // [0..fileLength) = SimaiFile 元数据（Charts 已 Ignore），[fileLength..) = SimaiChart 时序
-            var fileBuffer = new byte[fileLength];
-            mmvChartData.ReadArray(0, fileBuffer, 0, (int)fileLength);
-            var chartBuffer = new byte[chartLength];
-            mmvChartData.ReadArray(fileLength, chartBuffer, 0, (int)chartLength);
+                // 从共享内存读取 Edit 写入的两段 MemoryPack 字节并反序列化：
+                // [0..fileLength) = SimaiFile 元数据（Charts 已 Ignore），[fileLength..) = SimaiChart 时序
+                var fileBuffer = new byte[(int)fileLength];
+                mmvChartData.ReadArray(0, fileBuffer, 0, fileBuffer.Length);
+                var chartBuffer = new byte[(int)chartLength];
+                mmvChartData.ReadArray(fileLength, chartBuffer, 0, chartBuffer.Length);
 
-            var file = MemoryPackSerializer.Deserialize<SimaiFile>(fileBuffer) ?? SimaiFile.Empty(string.Empty, string.Empty);
-            var chart = MemoryPackSerializer.Deserialize<SimaiChart>(chartBuffer) ?? SimaiChart.Empty;
+                var file = MemoryPackSerializer.Deserialize<SimaiFile>(fileBuffer) ??
+                    SimaiFile.Empty(string.Empty, string.Empty);
+                var chart = MemoryPackSerializer.Deserialize<SimaiChart>(chartBuffer) ?? SimaiChart.Empty;
 
-            _file = file;
-            _chart = chart;
+                _timeProvider.offset = file.Offset;
+                var pvOffsetCommand = file.Commands.FirstOrDefault(c => c.Prefix == "pv_offset");
+                _bgManager.PvOffset = pvOffsetCommand.Prefix == "pv_offset" &&
+                    float.TryParse(pvOffsetCommand.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var pvOffset)
+                    ? pvOffset
+                    : 0f;
+                var clockCount = 0;
+                var clockCommand = file.Commands.FirstOrDefault(c => c.Prefix == "clock_count");
+                if (clockCommand != null) int.TryParse(clockCommand.Value, out clockCount);
+                _audioManager.GenerateAnswerSFX(chart, clockCount);
 
-            _timeProvider.offset = _file.Offset;
-            var pvOffsetCommand = file.Commands.FirstOrDefault(c => c.Prefix == "pv_offset");
-            _bgManager.PvOffset = pvOffsetCommand.Prefix == "pv_offset" &&
-                float.TryParse(pvOffsetCommand.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var pvOffset)
-                ? pvOffset
-                : 0f;
-            //answer
-            var clockCount = 0;
-            var clockCommand = file.Commands.FirstOrDefault(c => c.Prefix == "clock_count");
-            if (clockCommand != null) int.TryParse(clockCommand.Value, out clockCount);
-            _audioManager.GenerateAnswerSFX(_chart, clockCount);
+                _objectCounter.ResetLoaded();
+                _objectCounter.CountNoteSum(chart);
+                _objectCounter.ReportMeterBpm(chart);
 
-            //counter
-            _objectCounter.ResetLoaded();
-            _objectCounter.CountNoteSum(_chart);
-            _objectCounter.ReportMeterBpm(_chart);
+                await _dataLoader.Load(chart, file.Title, file.Artist, selectedDiff);
 
-            await _dataLoader.Load(_chart, file.Title, file.Artist, selectedDiff);
-
-            _state = previousState;
+                _file = file;
+                _chart = chart;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Chart Update Skipped] {ex}");
+                return false;
+            }
+            finally
+            {
+                _state = previousState;
+            }
         }
 
         public async UniTask PlayAsync(PlaybackMode playmode, double startAt, float speed, string recordPath)
