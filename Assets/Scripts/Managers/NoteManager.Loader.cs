@@ -249,16 +249,17 @@ namespace MajdataViewX.Managers
                             LoadTouchHold(timing, note, isNoteEach, ref sameTouchHoldCount);
                             break;
                         case SimaiNoteType.Slide:
-                            lastSlideContent = LoadSlideChain(
+                            if (!TryLoadSlideChain(
                                 timing,
                                 note,
                                 isNoteEach,
                                 isSlideEach,
-                                lastSlideContent,
+                                ref lastSlideContent,
                                 ref sameTapCount,
                                 ref sameSlideCount,
                                 ref loadedSlideLength[note.StartPosition - 1],
-                                ref loadedSlideTime[note.StartPosition - 1]);
+                                ref loadedSlideTime[note.StartPosition - 1]))
+                                break;
                             loadedSlideCount[note.StartPosition - 1]++;
                             if (!note.IsSlideNoHead)
                             {
@@ -740,18 +741,25 @@ namespace MajdataViewX.Managers
                 });
         }
 
-        private string LoadSlideChain(
+        private bool TryLoadSlideChain(
             in SimaiTimingPoint timing,
             in SimaiNote note,
             bool isNoteEach,
             bool isSlideEach,
-            string lastContent,
+            ref string lastSlideContent,
             ref int sameTapCount,
             ref int sameSlideCount,
             ref float loadedSlideLength,
             ref double loadedSlideTime)
         {
             var noteContent = note.RawContent;
+            var lastContent = lastSlideContent;
+
+            if (!TryResolveSlideMetadata(noteContent, out var metadata, out var startPos, out var endPos, out var error))
+            {
+                Debug.LogWarning($"[Note Load Skipped] Invalid slide content '{noteContent}': {error}");
+                return false;
+            }
 
             if (!note.IsSlideNoHead)
             {
@@ -806,11 +814,8 @@ namespace MajdataViewX.Managers
             }
 
 
-            SlideMetadata metadata;
             if (noteContent.Contains('w'))
             {
-                metadata = SlideTableNeo.GetWifiSlide(noteContent[0..3]);
-
                 var judgeQueueCount = metadata.JudgeAreaQueue.Length;
                 loadedSlideAreaArrays.Add(metadata.JudgeAreaQueue);
                 var judgeQueueLCount = metadata.JudgeAreaQueueL.Length;
@@ -884,9 +889,6 @@ namespace MajdataViewX.Managers
             }
             else
             {
-                var slideMetaDatas = GetSlidesFromRawContent(noteContent, out var startPos, out var endPos);
-                metadata = slideMetaDatas.Count == 1 ? slideMetaDatas[0] : SlideTableNeo.MakeConnSlide(slideMetaDatas);
-
                 var unskippable1 = -1;
                 var unskippable2 = -1;
                 switch (metadata.Flag)
@@ -969,7 +971,62 @@ namespace MajdataViewX.Managers
             loadedSlideLength += metadata.SlideLength;
             loadedSlideTime += note.SlideTime;
 
-            return noteContent;
+            lastSlideContent = noteContent;
+            return true;
+        }
+
+        private static bool TryResolveSlideMetadata(
+            string noteContent,
+            out SlideMetadata metadata,
+            out int startPos,
+            out int endPos,
+            out string error)
+        {
+            metadata = default;
+            startPos = endPos = 0;
+            error = null;
+
+            try
+            {
+                if (string.IsNullOrEmpty(noteContent))
+                {
+                    error = "slide content is empty";
+                    return false;
+                }
+
+                if (noteContent.Contains('w'))
+                {
+                    if (noteContent.Length < 3)
+                    {
+                        error = "wifi slide content too short";
+                        return false;
+                    }
+
+                    metadata = SlideTableNeo.GetWifiSlide(noteContent[0..3]);
+                    startPos = noteContent[0] - '0';
+                    endPos = noteContent[2] - '0';
+                }
+                else
+                {
+                    var slideMetaDatas = GetSlidesFromRawContent(noteContent, out startPos, out endPos);
+                    if (slideMetaDatas.Count == 0)
+                    {
+                        error = "no slide segment parsed";
+                        return false;
+                    }
+
+                    metadata = slideMetaDatas.Count == 1
+                        ? slideMetaDatas[0]
+                        : SlideTableNeo.MakeConnSlide(slideMetaDatas);
+                }
+            }
+            catch (Exception e) when (e is ArgumentException or KeyNotFoundException or InvalidOperationException)
+            {
+                error = e.Message;
+                return false;
+            }
+
+            return true;
         }
 
         private void ApplySlideFolding(
@@ -1207,7 +1264,7 @@ namespace MajdataViewX.Managers
                         return ">";
                 }
 
-                throw new Exception("CNM");
+                throw new ArgumentException($"unresolvable auto slide direction: {from}^{to}");
             }
         }
     }

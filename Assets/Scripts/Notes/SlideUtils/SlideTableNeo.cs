@@ -412,6 +412,9 @@ namespace MajdataViewX.Notes.SlideUtils
         /// <remarks>没有做任何 wifi 的特判，如果待连接的 slide 里有 wifi 是 UB</remarks>
         public static SlideMetadata MakeConnSlide(IList<SlideMetadata> slides)
         {
+            if (slides.Count == 0)
+                throw new ArgumentException("MakeConnSlide requires at least one slide", nameof(slides));
+
             if (slides.Count == 1) return slides[0];
 
             var judgeAreas = new List<SlideArea>();
